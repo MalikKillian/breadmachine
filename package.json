@@ -3,10 +3,11 @@
   "version": "0.1.5",
   "description": "",
   "email": "cocktailpeanuts@proton.me",
-  "main": "index.js",
+  "private": true,
   "author": "https://twitter.com/cocktailpeanut",
   "license": "MIT",
   "scripts": {
+    "build": "webpack",
     "dev": "node dev/index"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "getport": "^0.1.0",
     "gmgm": "^0.0.9",
     "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
     "minimatch": "^6.1.6",
     "multiformats": "^9.9.0",
     "picomatch": "^2.3.1",
@@ -35,5 +37,9 @@
     "uuid": "^9.0.0",
     "watcher": "^1.2.0",
     "xml-formatter": "^3.2.0"
+  },
+  "devDependencies": {
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
   }
 }
