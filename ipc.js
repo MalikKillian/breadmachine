@@ -6,6 +6,7 @@ const fs = require('fs')
 const path = require('path')
 const Diffusionbee = require('./crawler/diffusionbee')
 const Standard = require('./crawler/standard')
+
 class IPC {
   handlers = {}
   handle(name, fn) {
@@ -53,7 +54,11 @@ class IPC {
       }
     }
     this.queue = fastq.promise(async (msg) => {
-      this.socket.emit("msg", msg)
+      try {
+        this.socket.emit("msg", msg)
+      } catch (ex) {
+        console.warn(`failed to emit via socket`, ex)
+      }
     }, 1)
     this.ipc.handle("theme", (session, _theme) => {
       this.theme = _theme
@@ -176,7 +181,7 @@ class IPC {
         console.log("args", JSON.stringify(rpc.args, null, 2))
         let res = await this.gm[rpc.path][rpc.cmd](...rpc.args)
         return res
-      } 
+      }
     })
     this.ipc.handle('xmp', async (session, file_path) => {
       let res = await this.gm.agent.get(file_path)

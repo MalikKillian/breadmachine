@@ -1,11 +1,11 @@
 const path = require('path')
 const express = require('express')
 const cookie = require('cookie')
-const getport = require('getport')
+const cors = require('cors')
 const http=require("http");
 const os = require('os')
 const fs = require('fs')
-const socketIO = require('socket.io')
+const { Server } = require('socket.io')
 const yaml = require('js-yaml');
 const Watcher = require('watcher');
 const cookieParser = require('cookie-parser');
@@ -17,7 +17,11 @@ const IPC = require('./ipc')
 const Diffusionbee = require('./crawler/diffusionbee')
 const Standard = require('./crawler/standard')
 const GM = require("gmgm")
+
+const APP_NAME = `Breadboard API`;
+
 class Breadmachine {
+
   ipc = {}
   async init(config) {
     this.config = config
@@ -25,9 +29,8 @@ class Breadmachine {
     if (settings.accounts && Object.keys(settings.accounts).length > 0) {
       this.basicauth = new BasicAuth(settings.accounts)
     }
-
     // TODO: Reimplement port finder
-    this.port = parseInt(settings.port || "4200");
+    this.port = parseInt(settings.port || "4200") + 1;
 
     this.MACHINE_VERSION = packagejson.version
     this.VERSION = config.version ? config.version : ""
@@ -120,12 +123,10 @@ class Breadmachine {
     if (paths.length > 0) {
       this.watcher = new Watcher(paths, {
         recursive: true,
-//        debounce: 2000,
         ignoreInitial: true
       })
       this.watcher.on("add", async (filename) => {
-  //      this.io.emit("debug", { added: filename })
-        //if (filename.endsWith(".png") || filename.endsWith(".jpg") || filename.endsWith(".jpeg") || filename.endsWith(".webp")) {
+        // TODO: Support other formats
         if (filename.endsWith(".png")) {
           let res
           let last_mtime
@@ -140,7 +141,7 @@ class Breadmachine {
             last_mtime = stat.mtimeMs
             attempts--
             if (attempts <= 0) {
-              console.log("coudln't wait for file")
+              console.warn("Exhausted attempts waiting for file")
               return
             }
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -187,6 +188,7 @@ class Breadmachine {
     } else {
       session = req.cookies.session ? req.cookies.session : uuidv4()
     }
+    console.debug(`Session ID (auth): ${session}`);
     if (!this.ipc[session]) {
       this.ipc[session] = new IPC(this, session, this.config)
       if (this.config.onconnect) {
@@ -198,173 +200,134 @@ class Breadmachine {
   }
   start() {
     let app = express()
-    const server = http.createServer(app);
-    // this.io = socketIO(server, {
-    //   cookie: true
-    // });
-    // this.io.on('connection', (socket) => {
-    //   try {
-    //     let parsed = cookie.parse(socket.handshake.headers.cookie)
-    //     console.log("connect", parsed)
-    //     let session = parsed.session
-    //     if (this.ipc[session]) {
-    //       this.ipc[session].socket = socket
-    //       socket.on('disconnect', () => {
-    //         console.log('disconnect', parsed)
-    //         delete this.ipc[session]
-    //       })
-    //     }
-    //   } catch (e) {
-    //     console.log("io connection error", e)
-    //   }
-    // });
+    const httpServer = http.createServer(app);
+    this.io = new Server(httpServer, {
+      cors: {
+        origin: "http://localhost:4200"
+      },
+      cookie: true
+    });
+    this.io.on('connection', (socket) => {
+      try {
+        console.info(socket.handshake.headers.cookie);
+        let parsed = cookie.parse(socket.handshake.headers.cookie || "")
+        console.log("connect", parsed)
+        let session = parsed.session
+        console.debug(`Session ID: ${session}`);
+        if (this.ipc[session]) {
+          this.ipc[session].socket = socket
+          socket.on('disconnect', () => {
+            console.log('socket disconnect', parsed)
+            delete this.ipc[session]
+          })
+        }
+      } catch (e) {
+        console.log("io connection error", e)
+      }
+    });
+
+    // Need this since UI and API have two different ports
+    app.use(cors());
+
+    // Can't imagine needing static files (maybe rearrange some of the JS)
     app.use(express.static(path.resolve(__dirname, 'public')))
 
-    // TODO: Remove. This is a server-side function.
-    // app.get('/file', (req, res) => {
-    //   res.sendFile(req.query.file)
-    // })
+    // TODO: Add metadata here??? Could use /card endpoint instead.
+    app.get('/file', (req, res) => {
+      res.sendFile(req.query.file)
+    })
 
+    // Does the order of this matter???
     app.use(cookieParser());
+
+
     app.use((req, res, next) => {
       let a = req.get("user-agent")
       req.agent = (/breadboard/.test(a) ? "electron" : "web")
       next()
     })
+
     if (this.basicauth) {
       app.use(this.basicauth.auth.bind(this.basicauth))
     }
     app.use(express.json());
-    app.set('view engine', 'ejs');
-    app.set('views', path.resolve(__dirname, "views"))
+
+    // app.set('view engine', 'ejs');
+    // app.set('views', path.resolve(__dirname, "views"))
+
+    // TODO: Make this a generic app info endpoint??? API index (Swagger style)???
     app.get("/", async (req, res) => {
-      let sync_mode = (req.query.synchronize ? req.query.synchronize : this.default_sync_mode)
-      let sync_folder = (req.query.sync_folder ? req.query.sync_folder : "")
-      if (req.query && req.query.sorter_code) {
-        this.current_sorter_code = req.query.sorter_code
-      }
-      let session = this.auth(req, res)
-      res.render("index", {
-        agent: req.agent,
-        platform: process.platform,
-        query: req.query,
-        version: this.VERSION,
-        machine_version: this.MACHINE_VERSION,
-        sync_mode,
-        sync_folder,
-        need_update: this.need_update,
-        current_sorter_code: this.current_sorter_code,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
-      })
-      if (this.default_sync_mode) this.default_sync_mode = false   // disable sync after the first time at launch
+      res.status(404).json({message: `Nothing here right now. Come back later.`});
     })
+
+    // TODO: Display current settings (e.g. what folders are connected)
     app.get("/settings", (req, res) => {
-      let authorized = (this.basicauth ? true : false)
-      let session = this.auth(req, res)
-      res.render("settings", {
-        authorized,
-        agent: req.agent,
-        config: this.config.config,
-        platform: process.platform,
-        version: this.VERSION,
-        machine_version: this.MACHINE_VERSION,
-        query: req.query,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
-      })
+      res.status(404).json({message: `Nothing here right now. Come back later.`});
     })
+
+
     app.get("/help", (req, res) => {
       let items = [{
         name: "discord",
         description: "ask questions and share feedback",
-        icon: "fa-brands fa-discord",
         href: "https://discord.gg/XahBUrbVwz"
       }, {
         name: "twitter",
         description: "stay updated on Twitter",
-        icon: "fa-brands fa-twitter",
         href: "https://twitter.com/cocktailpeanut"
       }, {
         name: "github",
         description: "feature requests and bug report",
-        icon: "fa-brands fa-github",
         href: "https://github.com/cocktailpeanut/breadboard/issues"
       }]
-      let session = this.auth(req, res)
-      res.render("help", {
-        agent: req.agent,
-        config: this.config.config,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
-        items,
-        platform: process.platform,
-        machine_version: this.MACHINE_VERSION,
-        version: this.VERSION
-      })
+      res.json(items);
     })
+
+    // TODO: Update or remove (don't remember what this is for)
     app.get("/connect", (req, res) => {
-      let session = this.auth(req, res)
-      res.render("connect", {
-        agent: req.agent,
-        config: this.config.config,
-        platform: process.platform,
-        version: this.VERSION,
-        machine_version: this.MACHINE_VERSION,
-        query: req.query,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
-      })
-    })
+      res.status(404).json({message: `Nothing here right now. Come back later.`});
+    });
+
+    // TODO: Return list of favorite images
     app.get("/favorites", (req, res) => {
-      let session = this.auth(req, res)
-      res.render("favorites", {
-        agent: req.agent,
-        platform: process.platform,
-        version: this.VERSION,
-        machine_version: this.MACHINE_VERSION,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
-      })
-    })
+      res.status(404).json({message: `Nothing here right now. Come back later.`});
+    });
+
+    // TODO: Send back info for given file??? Remove??? Could add metadata to /file endpoint.
     app.get('/card', (req, res) => {
-      let session = this.auth(req, res)
-      res.render("card", {
-        agent: req.agent,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
-        version: this.VERSION,
-        file_path: req.query.file
-      })
+      res.status(404).json({message: `Nothing here right now. Come back later.`});
     })
+
+    // TODO: Remove??? This was the single-file viewer. No idea how this could be used from API perspective.
     app.get('/screen', (req, res) => {
-      let session = this.auth(req, res)
-      res.render("screen", {
-        agent: req.agent,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
-        version: this.VERSION,
-      })
+      res.status(404).json({message: `Nothing here right now. Come back later.`});
     })
 
-    // TODO: Remove. This is a server-side function.
-    // app.post("/ipc", async (req, res) => {
-    //   let name = req.body.name
-    //   let args = req.body.args
-    //   let session = this.auth(req, res)
-    //   let r = await this.ipc[session].call(session, name, ...args)
-    //   if (r) {
-    //     res.json(r)
-    //   } else {
-    //     res.json({})
-    //   }
-    // })
+    // TODO: Remove??? Wouldn't have any more "inter" process communication.
+    app.post("/ipc", async (req, res) => {
+      let name = req.body.name
+      let args = req.body.args
+      let session = this.auth(req, res)
 
-    server.listen(this.port, () => {
-      console.log(`Breadboard running at http://localhost:${this.port}`)
+      console.info(session);
+      console.info(name);
+      console.info(args);
+
+      let r = await this.ipc[session].call(session, name, ...args)
+      if (r) {
+        res.json(r)
+      } else {
+        res.json({})
+      }
+    })
+
+    httpServer.listen(this.port, () => {
+      console.info(`${APP_NAME} running at http://localhost:${this.port}`)
     })
     this.app = app
   }
+
+  // TODO: Move this to the "app info" endpoint???
   async updateCheck () {
     if (this.config.releases) {
       const releaseFeed = this.config.releases.feed
@@ -386,4 +349,6 @@ class Breadmachine {
     }
   }
 }
+
+// TODO: CommonJS ==> ES6
 module.exports = Breadmachine

@@ -1,6 +1,9 @@
 class API {
   constructor(config) {
-    this.socket = io()
+    // UI and API are different servers
+    this.socket = io("http://localhost:4201", {
+      withCredentials: true
+    })
     this.config = config
   }
   sync (rpc) {
@@ -100,7 +103,7 @@ class API {
   }
   open (file_path) {
     if (this.config && this.config.agent === "web") {
-      window.open(`/file?file=${encodeURIComponent(file_path)}`, "_blank")
+      window.open(`http://localhost:4201/file?file=${encodeURIComponent(file_path)}`, "_blank")
     } else {
       return this.request("open", file_path)
     }
@@ -109,7 +112,8 @@ class API {
     this.request("debug")
   }
   request(name, ...args) {
-    return fetch("/ipc", {
+    // FIXME: Don't hardcode.
+    return fetch("http://localhost:4201/ipc", {
       method: "post",
       headers: {
         "Content-Type": "application/json",

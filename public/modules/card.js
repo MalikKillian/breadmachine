@@ -98,7 +98,7 @@ const card = (meta, stripPunctuation, recycle) => {
 <button title='pop out to a new window' class='popup' data-src="/card?file=${encodeURIComponent(meta.file_path)}"><i class="fa-solid fa-up-right-from-square"></i></button>
 </div>
 <div class='row'>
-  <img loading='${recycle ? "eager" : "lazy"}' data-root="${meta.root_path}" data-src="${meta.file_path}" src="/file?file=${encodeURIComponent(meta.file_path)}">
+  <img loading='${recycle ? "eager" : "lazy"}' data-root="${meta.root_path}" data-src="${meta.file_path}" src="http://localhost:4201/file?file=${encodeURIComponent(meta.file_path)}">
   <div class='col'>
     <h4>${meta.prompt ? meta.prompt : ""}</h4>
     <div>

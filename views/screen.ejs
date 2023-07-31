@@ -37,7 +37,7 @@
       const db = new DB(api);
       (async () => {
         await db.init((meta) => {
-          document.querySelector("#frame").src = `/file?file=${encodeURIComponent(meta.file_path)}`
+          document.querySelector("#frame").src = `http://localhost:4201/file?file=${encodeURIComponent(meta.file_path)}`
         });
         await init_theme()
       })();
