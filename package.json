@@ -7,8 +7,16 @@
   "author": "https://twitter.com/cocktailpeanut",
   "license": "MIT",
   "scripts": {
-    "dev-ui": "node dev/index",
-    "dev-server": "node dev/index-svr"
+    "dev-ui": "nodemon dev/index.js",
+    "dev-server": "nodemon dev/index-svr.js"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "**/test/**",
+      "**/docs/**",
+      "**/node_modules/**"
+    ],
+    "delay": 2500
   },
   "dependencies": {
     "@ipld/dag-pb": "^2.1.18",
@@ -33,9 +41,13 @@
     "picomatch": "^2.3.1",
     "png-metadata": "^1.0.2",
     "socket.io": "^4.6.0",
+    "tracer": "^1.1.6",
     "tsscmp": "^1.0.6",
     "uuid": "^9.0.0",
     "watcher": "^1.2.0",
     "xml-formatter": "^3.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }

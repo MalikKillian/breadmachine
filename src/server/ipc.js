@@ -55,6 +55,8 @@ class IPC {
     }
     this.queue = fastq.promise(async (msg) => {
       try {
+        console.debug(`session of ipc: ${this.session}`)
+        console.debug(`socket is ${this.socket}`)
         this.socket.emit("msg", msg)
       } catch (ex) {
         console.warn(`failed to emit via socket`, ex)

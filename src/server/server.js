@@ -11,12 +11,14 @@ const Watcher = require('watcher');
 const cookieParser = require('cookie-parser');
 const { v4: uuidv4 } = require('uuid');
 const Updater = require('./updater/index')
-const packagejson = require('./package.json')
+const packagejson = require('../../package.json')
 const BasicAuth = require('./basicauth')
 const IPC = require('./ipc')
 const Diffusionbee = require('./crawler/diffusionbee')
 const Standard = require('./crawler/standard')
 const GM = require("gmgm")
+
+const logger = require('tracer').colorConsole()
 
 const APP_NAME = `Breadboard API`;
 
@@ -34,7 +36,7 @@ class Breadmachine {
 
     this.MACHINE_VERSION = packagejson.version
     this.VERSION = config.version ? config.version : ""
-    console.log("versions", { agent: this.VERSION, core: this.MACHINE_VERSION })
+    logger.info("versions", { agent: this.VERSION, core: this.MACHINE_VERSION })
     this.need_update = null
     this.default_sync_mode = "default"
     this.current_sorter_code = 0
@@ -83,7 +85,7 @@ class Breadmachine {
 
 
     await this.updateCheck().catch((e) => {
-      console.log("update check error", e)
+      logger.error("update check error", e)
     })
     this.start()
 
@@ -112,7 +114,7 @@ class Breadmachine {
       }
       return res
     } catch (e) {
-      console.log("ERROR", e)
+      logger.error("ERROR", e)
       return null
     }
   }
@@ -141,7 +143,7 @@ class Breadmachine {
             last_mtime = stat.mtimeMs
             attempts--
             if (attempts <= 0) {
-              console.warn("Exhausted attempts waiting for file")
+              logger.warn("Exhausted attempts waiting for file")
               return
             }
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -188,8 +190,9 @@ class Breadmachine {
     } else {
       session = req.cookies.session ? req.cookies.session : uuidv4()
     }
-    console.debug(`Session ID (auth): ${session}`);
+    logger.debug(`Session ID (auth): ${session}`);
     if (!this.ipc[session]) {
+      console.debug(`new IPC for session ${session}`)
       this.ipc[session] = new IPC(this, session, this.config)
       if (this.config.onconnect) {
         this.config.onconnect(session)
@@ -203,26 +206,27 @@ class Breadmachine {
     const httpServer = http.createServer(app);
     this.io = new Server(httpServer, {
       cors: {
-        origin: "http://localhost:4200"
+        origin: "http://localhost:4200",
+        credentials: true
       },
       cookie: true
     });
     this.io.on('connection', (socket) => {
       try {
-        console.info(socket.handshake.headers.cookie);
+        logger.info(socket.handshake.headers.cookie);
         let parsed = cookie.parse(socket.handshake.headers.cookie || "")
-        console.log("connect", parsed)
+        logger.info("connect", parsed)
         let session = parsed.session
-        console.debug(`Session ID: ${session}`);
+        logger.debug(`Session ID: ${session} <== ${socket}`);
         if (this.ipc[session]) {
           this.ipc[session].socket = socket
           socket.on('disconnect', () => {
-            console.log('socket disconnect', parsed)
+            logger.info('socket disconnect', parsed)
             delete this.ipc[session]
           })
         }
       } catch (e) {
-        console.log("io connection error", e)
+        logger.error("io connection error", e)
       }
     });
 
@@ -309,9 +313,9 @@ class Breadmachine {
       let args = req.body.args
       let session = this.auth(req, res)
 
-      console.info(session);
-      console.info(name);
-      console.info(args);
+      logger.info(session);
+      logger.info(name);
+      logger.info(args);
 
       let r = await this.ipc[session].call(session, name, ...args)
       if (r) {
@@ -322,7 +326,7 @@ class Breadmachine {
     })
 
     httpServer.listen(this.port, () => {
-      console.info(`${APP_NAME} running at http://localhost:${this.port}`)
+      logger.info(`${APP_NAME} running at http://localhost:${this.port}`)
     })
     this.app = app
   }
@@ -337,9 +341,9 @@ class Breadmachine {
       if (res.feed && res.feed.entry) {
         let latest = (Array.isArray(res.feed.entry) ? res.feed.entry[0] : res.feed.entry)
         if (latest.title === this.VERSION) {
-          console.log("UP TO DATE", latest.title, this.VERSION)
+          logger.info("UP TO DATE", latest.title, this.VERSION)
         } else {
-          console.log("Need to update to", latest.id, latest.updated, latest.title)
+          logger.info("Need to update to", latest.id, latest.updated, latest.title)
           this.need_update = {
             $url: releaseURL,
             latest
