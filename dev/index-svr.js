@@ -1,5 +1,5 @@
 const path = require('path');
-const Breadmachine = require('../server');
+const Breadmachine = require('../src/server/server');
 (async () => {
   const bread = new Breadmachine()
   await bread.init({
