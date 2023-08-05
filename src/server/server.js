@@ -192,7 +192,7 @@ class Breadmachine {
     }
     logger.debug(`Session ID (auth): ${session}`);
     if (!this.ipc[session]) {
-      console.debug(`new IPC for session ${session}`)
+      logger.debug(`new IPC for session ${session}`)
       this.ipc[session] = new IPC(this, session, this.config)
       if (this.config.onconnect) {
         this.config.onconnect(session)
@@ -219,6 +219,7 @@ class Breadmachine {
         let session = parsed.session
         logger.debug(`Session ID: ${session} <== ${socket}`);
         if (this.ipc[session]) {
+          logger.debug(`Assigning socket to session ${session}`);
           this.ipc[session].socket = socket
           socket.on('disconnect', () => {
             logger.info('socket disconnect', parsed)
