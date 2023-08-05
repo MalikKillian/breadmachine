@@ -1,21 +1,13 @@
 const path = require('path')
 const express = require('express')
-const cookie = require('cookie')
-const getport = require('getport')
 const http=require("http");
 const os = require('os')
 const fs = require('fs')
-const socketIO = require('socket.io')
 const yaml = require('js-yaml');
-const Watcher = require('watcher');
 const cookieParser = require('cookie-parser');
 const { v4: uuidv4 } = require('uuid');
-const Updater = require('./updater/index')
 const packagejson = require('./package.json')
-const BasicAuth = require('./basicauth')
-const IPC = require('./ipc')
-const Diffusionbee = require('./crawler/diffusionbee')
-const Standard = require('./crawler/standard')
+const BasicAuth = require('./src/server/basicauth')
 const GM = require("gmgm")
 class Breadmachine {
   ipc = {}
@@ -35,6 +27,9 @@ class Breadmachine {
     this.need_update = null
     this.default_sync_mode = "default"
     this.current_sorter_code = 0
+    this.theme = config?.theme || "default";
+    // Seems like there's only two options here
+    this.style = ["default", "dark"][0];
 
     const home = os.homedir()
     this.home = path.resolve(home, "__breadboard__")
@@ -85,89 +80,7 @@ class Breadmachine {
     this.start()
 
   }
-  async parse(filename) {
-    let r
-    const folder = path.dirname(filename)
-    let diffusionbee;
-    let standard;
-    let file_path = filename
-    let root_path = folder
-    let res;
-    try {
-      if (/diffusionbee/g.test(root_path)) {
-        if (!this.engines.diffusionbee) {
-          this.engines.diffusionbee = new Diffusionbee(root_path, this.config.gm)
-        }
-        await this.engines.diffusionbee.init()
-        res = await this.engines.diffusionbee.sync(file_path)
-      } else {
-        if (!this.engines.standard) {
-          this.engines.standard = new Standard(root_path, this.config.gm)
-        }
-        await this.engines.standard.init()
-        res = await this.engines.standard.sync(file_path)
-      }
-      return res
-    } catch (e) {
-      console.log("ERROR", e)
-      return null
-    }
-  }
-  watch(paths) {
-    if (this.watcher) {
-      this.watcher.close()
-    }
-    if (paths.length > 0) {
-      this.watcher = new Watcher(paths, {
-        recursive: true,
-//        debounce: 2000,
-        ignoreInitial: true
-      })
-      this.watcher.on("add", async (filename) => {
-  //      this.io.emit("debug", { added: filename })
-        //if (filename.endsWith(".png") || filename.endsWith(".jpg") || filename.endsWith(".jpeg") || filename.endsWith(".webp")) {
-        if (filename.endsWith(".png")) {
-          let res
-          let last_mtime
 
-          let attempts = 20;
-          while(true) {
-            let stat = await fs.promises.stat(filename)
-            if (stat.mtimeMs === last_mtime) {
-              // no more change. stop
-              break;
-            }
-            last_mtime = stat.mtimeMs
-            attempts--
-            if (attempts <= 0) {
-              console.log("coudln't wait for file")
-              return
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-
-          // wait a bit to give time for the source apps to load the image
-          await new Promise(resolve => setTimeout(resolve, 300));
-
-          for(let i=0; i<5; i++) {
-            res = await this.parse(filename)
-            if (res) {
-              break;
-            } else {
-              // try again in 1 sec
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-          if (res) {
-            for(let session in this.ipc) {
-              let ipc = this.ipc[session]
-              await ipc.push(res)
-            }
-          }
-        }
-      })
-    }
-  }
   async settings() {
     let str = await fs.promises.readFile(this.config.config, "utf8")
     const attrs = yaml.load(str)
@@ -187,43 +100,20 @@ class Breadmachine {
     } else {
       session = req.cookies.session ? req.cookies.session : uuidv4()
     }
-    if (!this.ipc[session]) {
-      this.ipc[session] = new IPC(this, session, this.config)
-      if (this.config.onconnect) {
-        this.config.onconnect(session)
-      }
-    }
+    // if (!this.ipc[session]) {
+    //   this.ipc[session] = new IPC(this, session, this.config)
+    //   if (this.config.onconnect) {
+    //     this.config.onconnect(session)
+    //   }
+    // }
     res.cookie('session', session)
     return session
   }
   start() {
     let app = express()
     const server = http.createServer(app);
-    // this.io = socketIO(server, {
-    //   cookie: true
-    // });
-    // this.io.on('connection', (socket) => {
-    //   try {
-    //     let parsed = cookie.parse(socket.handshake.headers.cookie)
-    //     console.log("connect", parsed)
-    //     let session = parsed.session
-    //     if (this.ipc[session]) {
-    //       this.ipc[session].socket = socket
-    //       socket.on('disconnect', () => {
-    //         console.log('disconnect', parsed)
-    //         delete this.ipc[session]
-    //       })
-    //     }
-    //   } catch (e) {
-    //     console.log("io connection error", e)
-    //   }
-    // });
-    app.use(express.static(path.resolve(__dirname, 'public')))
 
-    // TODO: Remove. This is a server-side function.
-    // app.get('/file', (req, res) => {
-    //   res.sendFile(req.query.file)
-    // })
+    app.use(express.static(path.resolve(__dirname, 'public')))
 
     app.use(cookieParser());
     app.use((req, res, next) => {
@@ -254,8 +144,8 @@ class Breadmachine {
         sync_folder,
         need_update: this.need_update,
         current_sorter_code: this.current_sorter_code,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
+        theme: this.theme,
+        style: this.style,
       })
       if (this.default_sync_mode) this.default_sync_mode = false   // disable sync after the first time at launch
     })
@@ -270,8 +160,8 @@ class Breadmachine {
         version: this.VERSION,
         machine_version: this.MACHINE_VERSION,
         query: req.query,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
+        theme: this.theme,
+        style: this.style,
       })
     })
     app.get("/help", (req, res) => {
@@ -295,8 +185,8 @@ class Breadmachine {
       res.render("help", {
         agent: req.agent,
         config: this.config.config,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
+        theme: this.theme,
+        style: this.style,
         items,
         platform: process.platform,
         machine_version: this.MACHINE_VERSION,
@@ -312,8 +202,8 @@ class Breadmachine {
         version: this.VERSION,
         machine_version: this.MACHINE_VERSION,
         query: req.query,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
+        theme: this.theme,
+        style: this.style,
       })
     })
     app.get("/favorites", (req, res) => {
@@ -323,16 +213,16 @@ class Breadmachine {
         platform: process.platform,
         version: this.VERSION,
         machine_version: this.MACHINE_VERSION,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
+        theme: this.theme,
+        style: this.style,
       })
     })
     app.get('/card', (req, res) => {
       let session = this.auth(req, res)
       res.render("card", {
         agent: req.agent,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
+        theme: this.theme,
+        style: this.style,
         version: this.VERSION,
         file_path: req.query.file
       })
@@ -341,24 +231,11 @@ class Breadmachine {
       let session = this.auth(req, res)
       res.render("screen", {
         agent: req.agent,
-        theme: this.ipc[session].theme,
-        style: this.ipc[session].style,
+        theme: this.theme,
+        style: this.style,
         version: this.VERSION,
       })
     })
-
-    // TODO: Remove. This is a server-side function.
-    // app.post("/ipc", async (req, res) => {
-    //   let name = req.body.name
-    //   let args = req.body.args
-    //   let session = this.auth(req, res)
-    //   let r = await this.ipc[session].call(session, name, ...args)
-    //   if (r) {
-    //     res.json(r)
-    //   } else {
-    //     res.json({})
-    //   }
-    // })
 
     server.listen(this.port, () => {
       console.log(`Breadboard running at http://localhost:${this.port}`)
