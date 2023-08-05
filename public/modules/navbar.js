@@ -81,10 +81,10 @@ class Navbar {
           favorited = true
         }
         if (favorited) {
-          document.querySelector("nav #favorite").classList.add("selected") 
+          document.querySelector("nav #favorite").classList.add("selected")
           document.querySelector("nav #favorite i").className = "fa-solid fa-star"
         } else {
-          document.querySelector("nav #favorite").classList.remove("selected") 
+          document.querySelector("nav #favorite").classList.remove("selected")
           document.querySelector("nav #favorite i").className = "fa-regular fa-star"
         }
       }
@@ -99,7 +99,7 @@ class Navbar {
         await this.app.search()
       }
     })
-    document.querySelector("#sync").addEventListener('click', async (e) => {
+    document.getElementById("sync").addEventListener('click', async (e) => {
       await this.app.synchronize()
     })
     document.querySelector(".search").addEventListener("keyup", (e) => {
@@ -293,7 +293,7 @@ class Navbar {
         }
       }
       if (!exists) {
-        existingAdvancedTokens.push(key + ":" + val) 
+        existingAdvancedTokens.push(key + ":" + val)
       }
     }
 
@@ -314,7 +314,7 @@ class Navbar {
       let newQuery = result.join(" ")
       this.app.search(newQuery)
     }
-      
+
 
   }
   notification(value) {
