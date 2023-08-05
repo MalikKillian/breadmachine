@@ -7,6 +7,8 @@ const path = require('path')
 const Diffusionbee = require('./crawler/diffusionbee')
 const Standard = require('./crawler/standard')
 
+const logger = require('tracer').colorConsole()
+
 class IPC {
   handlers = {}
   handle(name, fn) {
@@ -40,7 +42,8 @@ class IPC {
         this.ipc = config.ipc
       }
     }
-    this.theme = (config && config.theme ? config.theme : "default")
+    // Doesn't seem like a good place to decide this. It's also fixed for the life of the server.
+    // this.theme = (config && config.theme ? config.theme : "default")
     this.config = config
     this.gm = this.config.gm
     if (!this.ipc) {
@@ -55,11 +58,11 @@ class IPC {
     }
     this.queue = fastq.promise(async (msg) => {
       try {
-        console.debug(`session of ipc: ${this.session}`)
-        console.debug(`socket is ${this.socket}`)
+        logger.debug(`session of ipc: ${this.session}`)
+        logger.debug(`socket is ${this.socket}`)
         this.socket.emit("msg", msg)
       } catch (ex) {
-        console.warn(`failed to emit via socket`, ex)
+        logger.warn(`failed to emit via socket`, ex)
       }
     }, 1)
     this.ipc.handle("theme", (session, _theme) => {
@@ -103,7 +106,7 @@ class IPC {
               res = await standard.sync(file_path, rpc.force)
             }
           } catch (e) {
-            console.log("E", e)
+            logger.info("E", e)
           }
           if (res) {
             await this.queue.push({
@@ -170,7 +173,7 @@ class IPC {
     this.ipc.handle('del', async (session, filenames) => {
       for(let filename of filenames) {
         await fs.promises.rm(filename).catch((e) => {
-          console.log("error", e)
+          logger.error("error", e)
         })
       }
     })
@@ -180,7 +183,7 @@ class IPC {
     })
     this.ipc.handle('gm', async (session, rpc) => {
       if (rpc.cmd === "set" || rpc.cmd === "rm") {
-        console.log("args", JSON.stringify(rpc.args, null, 2))
+        logger.info("args", JSON.stringify(rpc.args, null, 2))
         let res = await this.gm[rpc.path][rpc.cmd](...rpc.args)
         return res
       }
