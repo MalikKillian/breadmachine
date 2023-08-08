@@ -188,7 +188,8 @@ class Breadmachine {
     if (req.agent === "electron") {
       session = req.get("user-agent")
     } else {
-      session = req.cookies.session ? req.cookies.session : uuidv4()
+      // FIXME: Restore normal session creation
+      session = req.cookies.session ? req.cookies.session : "00000000-0000-0000-0000-000000000001" // uuidv4()
     }
     logger.debug(`Session ID (auth): ${session}`);
     if (!this.ipc[session]) {
