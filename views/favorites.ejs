@@ -45,9 +45,9 @@
     <script src="./socket.io.js"></script>
     <script src='./popper.js'></script>
     <script src='./tippy.js'></script>
+    <script src="./dexie.js"></script>
     <script src="./modules/api.js"></script>
     <script src="./modules/db.js"></script>
-    <script src="./dexie.js"></script>
     <script>
     const VERSION = "<%=version%>"
     const api = new API()
@@ -118,7 +118,7 @@
     document.querySelector(".favorites").addEventListener("click", async (e) => {
       let globalTarget = (e.target.classList.contains(".global-filter") ? e.target : e.target.closest(".global-filter"))
       if (globalTarget) {
-        let query = globalTarget.getAttribute("data-query") 
+        let query = globalTarget.getAttribute("data-query")
         let global = (globalTarget.getAttribute("data-global") === "global")
         let newGlobal = (global ? 0 : 1)
         await db.user.favorites.where({ query }).modify({ global: newGlobal })

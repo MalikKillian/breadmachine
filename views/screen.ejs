@@ -14,9 +14,6 @@
   </head>
   <body class="<%=theme%>" data-style="<%=style%>">
     <img id='frame'>
-    <script src="./modules/api.js"></script>
-    <script src="./modules/db.js"></script>
-    <script src="./modules/card.js"></script>
     <script src="./socket.io.js"></script>
     <script src='./hotkeys.js'></script>
     <script src="./timeago.js"></script>
@@ -24,6 +21,9 @@
     <script src='./popper.js'></script>
     <script src="./tippy.js"></script>
     <script src="./viewer.js"></script>
+    <script src="./modules/api.js"></script>
+    <script src="./modules/db.js"></script>
+    <script src="./modules/card.js"></script>
     <script>
       const VERSION = "<%=version%>"
       const init_theme = async () => {

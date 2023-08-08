@@ -80,9 +80,9 @@
     <script src="./socket.io.js"></script>
     <script src='./popper.js'></script>
     <script src='./tippy.js'></script>
+    <script src="./dexie.js"></script>
     <script src="./modules/api.js"></script>
     <script src="./modules/db.js"></script>
-    <script src="./dexie.js"></script>
     <script>
     const VERSION = "<%=version%>"
     const api = new API()
@@ -106,7 +106,7 @@
       return `<div class='row'>
       <div>${r}</div>
       <div class='flexible'></div>
-      <button class='add' data-name='${r}'><i class="fa-solid fa-folder-plus"></i> Connect</button> 
+      <button class='add' data-name='${r}'><i class="fa-solid fa-folder-plus"></i> Connect</button>
 </div>`
     }
     const template = (r) => {
@@ -114,7 +114,7 @@
       <div>${r}</div>
       <div class='flexible'></div>
       <!--<button class='reindex-folder' data-name='${r}'><i class="fa-solid fa-rotate"></i> Re-index</button> -->
-      <button class='del' data-name='${r}'><i class="fa-solid fa-xmark"></i> Disconnect</button> 
+      <button class='del' data-name='${r}'><i class="fa-solid fa-xmark"></i> Disconnect</button>
 </div>`
     }
 

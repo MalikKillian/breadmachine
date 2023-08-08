@@ -20,10 +20,6 @@
       <div class='status'></div>
     </nav>
     <div class='pop container' data-src="<%=file_path%>"></div>
-    <script src="./modules/api.js"></script>
-    <script src="./modules/db.js"></script>
-    <script src="./modules/card.js"></script>
-    <script src="./modules/handler.js"></script>
     <script src="./socket.io.js"></script>
     <script src='./hotkeys.js'></script>
     <script src="./timeago.js"></script>
@@ -31,6 +27,10 @@
     <script src='./popper.js'></script>
     <script src="./tippy.js"></script>
     <script src="./viewer.js"></script>
+    <script src="./modules/api.js"></script>
+    <script src="./modules/db.js"></script>
+    <script src="./modules/card.js"></script>
+    <script src="./modules/handler.js"></script>
     <script>
       const VERSION = "<%=version%>"
       const init_theme = async () => {
@@ -116,7 +116,7 @@
                 }
               }
               if (!exists) {
-                existingAdvancedTokens.push(key + ":" + val) 
+                existingAdvancedTokens.push(key + ":" + val)
               }
             }
 
