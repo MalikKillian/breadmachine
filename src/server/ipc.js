@@ -11,28 +11,7 @@ const logger = require('tracer').colorConsole()
 
 class IPC {
   handlers = {}
-  handle(name, fn) {
-    this.handlers[name] = fn
-  }
-  async push(msg) {
-    // if the filename matches any of the globs, push
-    let globs = Array.from(this.globs)
-    if (globs.length > 0) {
-      let matched = false
-      for(let g of globs) {
-        if (minimatch(msg.file_path, g)) {
-          matched = true
-          break
-        }
-      }
-      if (matched) {
-        await this.queue.push({
-          method: "new",
-          params: [msg]
-        })
-      }
-    }
-  }
+
   constructor(app, session, config) {
     this.session = session
     this.globs = new Set()
@@ -198,7 +177,35 @@ class IPC {
         return ""
       }
     })
+    this.ipc.handle('ping', async (session) => {
+      return 'pong';
+    })
   }
+
+  handle(name, fn) {
+    this.handlers[name] = fn
+  }
+
+  async push(msg) {
+    // if the filename matches any of the globs, push
+    let globs = Array.from(this.globs)
+    if (globs.length > 0) {
+      let matched = false
+      for(let g of globs) {
+        if (minimatch(msg.file_path, g)) {
+          matched = true
+          break
+        }
+      }
+      if (matched) {
+        await this.queue.push({
+          method: "new",
+          params: [msg]
+        })
+      }
+    }
+  }
+
   async call(session, name, ...args) {
     let r = await this.handlers[name](session, ...args)
     return r
