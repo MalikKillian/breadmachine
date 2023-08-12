@@ -1,5 +1,7 @@
 class API {
   constructor(config) {
+    // Otherwise the "IPC Session" may not yet be established
+    this.ping();
     // UI and API are different servers
     this.socket = io("http://localhost:4201", {
       withCredentials: true
@@ -107,6 +109,9 @@ class API {
     } else {
       return this.request("open", file_path)
     }
+  }
+  ping () {
+    this.request("ping");
   }
   debug () {
     this.request("debug")
