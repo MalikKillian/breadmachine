@@ -74,7 +74,7 @@ class App {
       },
       onShown: (instance) => {
         const liveHandler = async (e) => {
-          this.live = !this.live 
+          this.live = !this.live
           await this.user.settings.put({ key: "live", val: this.live })
           if (this.live) {
             document.querySelector("#live-option i").classList.add("fa-spin")
@@ -170,7 +170,7 @@ class App {
         settings: "key, val",
         favorites: "query"
       })
-      
+
       let previous_version
       try {
         let ver = await legacy_db.settings.where({ key: "version" }).first()
@@ -311,7 +311,7 @@ class App {
         await this.updateCheckpoint(o.root_path, o.btime)
       }
     } else {
-      let cp = await this.user.checkpoints.where({ root_path: o.root_path }).first()   
+      let cp = await this.user.checkpoints.where({ root_path: o.root_path }).first()
       if (cp) {
         if (cp && cp.btime < o.btime) {
           await this.updateCheckpoint(o.root_path, o.btime)
@@ -350,37 +350,38 @@ class App {
       limit: 10,
       options: {
         checkpoint,
-        prepend: true  
+        prepend: true
       }
     })
   }
   init_rpc() {
     this.api.listen(async (_event, value) => {
       if (value.method) {
-        if (value.method === "new") {
-          if (this.live) {
-            for(let meta of value.params) {
-              queueMicrotask(async () => {
-                let response = await this.insert(meta, { silent: true }).catch((e) => {
-                  console.log("ERROR", e)
-                })
-                this.debounced_update()
-              })
-            }
-          }
+        if (value.method !== "new") {
+          return;
         }
-      } else {
+        if (!this.live) {
+          return;
+        }
+        for(let meta of value.params) {
+          queueMicrotask(async () => {
+            await this.insert(meta, { silent: true })
+              .catch((e) => {
+                console.error("ERROR", e)
+              })
+            this.debounced_update()
+          })
+        }
+    } else {
         queueMicrotask(async () => {
           if (value.meta) {
-            let response = await this.insert(value.meta).catch((e) => {
-              console.log("ERROR", e)
-            })
+            await this.insert(value.meta)
+              .catch((e) => {
+                console.error("ERROR", e)
+              })
           }
           this.sync_counter++;
-          if (this.sync_counter === value.total) {
-            this.sync_complete = true
-          }
-          let ratio = value.progress/value.total
+          this.sync_complete = (this.sync_counter === value.total);
           this.bar.go(100*value.progress/value.total);
         })
       }
@@ -616,7 +617,7 @@ class App {
 //  height () {
 //    const el = document.querySelector(".card:first-child")
 //    let h = parseFloat(getComputedStyle(el, null).height.replace("px", ""))
-//    let rows = this.rows() 
+//    let rows = this.rows()
 //    return h / rows
 //  }
 //  rows () {
@@ -679,14 +680,14 @@ class App {
     if (this.query) {
       let favorited = await this.user.favorites.get(this.query)
       if (favorited) {
-        document.querySelector("nav #favorite").classList.add("selected") 
+        document.querySelector("nav #favorite").classList.add("selected")
         document.querySelector("nav #favorite i").className = "fa-solid fa-star"
       } else {
-        document.querySelector("nav #favorite").classList.remove("selected") 
+        document.querySelector("nav #favorite").classList.remove("selected")
         document.querySelector("nav #favorite i").className = "fa-regular fa-star"
       }
     } else {
-      document.querySelector("nav #favorite").classList.remove("selected") 
+      document.querySelector("nav #favorite").classList.remove("selected")
       document.querySelector("nav #favorite i").className = "fa-regular fa-star"
     }
     this.worker.postMessage({ query: this.query, sorter: this.navbar.sorter, offset: this.offset, limit: 500, options: null })
@@ -713,14 +714,14 @@ class App {
 
 }
 
-let QUERY
-if (document.querySelector("#query")) {
-  QUERY = document.querySelector("#query").getAttribute("data-value")
-}
+const QUERY = document?.querySelector("#query")?.getAttribute("data-value");
 console.log("QUERY", QUERY)
 
 const api = new API({ agent: AGENT });
 const app = new App(QUERY, SORTER, NEED_UPDATE, SYNC_MODE, SYNC_FOLDER, api);
+// FIXME: Probably not good to expose this
+window.the_app = app;
+
 (async () => {
   await app.init()
 })();
