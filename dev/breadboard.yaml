@@ -1,5 +1,6 @@
 port: 4200
 folders:
+  - ~/Pictures/ai_examples
   - ~/invokeai/outputs
   - ~/.diffusionbee/images
 #accounts:

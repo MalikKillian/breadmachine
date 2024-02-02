@@ -6,9 +6,14 @@ class API {
     this.socket = io("http://localhost:4201", {
       withCredentials: true
     })
+    // client-side
+    this.socket.on("connect", () => {
+      console.log(`Socket id: ${this.socket.id}`);
+    });
     this.config = config
   }
   sync (rpc) {
+    console.debug(`Synchronizing`);
     return this.request('sync', rpc)
   }
   subscribe (folderpaths) {
@@ -114,6 +119,7 @@ class API {
     this.request("ping");
   }
   debug () {
+    // TODO: Remove??? This doesn't seem to be implemented.
     this.request("debug")
   }
   request(name, ...args) {
@@ -127,8 +133,6 @@ class API {
         name,
         args
       })
-    }).then((res) => {
-      return res.json()
-    })
+    }).then((res) => res.json())
   }
 }
