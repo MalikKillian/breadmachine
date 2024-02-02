@@ -166,7 +166,7 @@ class Breadmachine {
       })
     })
     app.get("/help", (req, res) => {
-      let items = [{
+      const items = [{
         name: "discord",
         description: "ask questions and share feedback",
         icon: "fa-brands fa-discord",
@@ -181,18 +181,8 @@ class Breadmachine {
         description: "feature requests and bug report",
         icon: "fa-brands fa-github",
         href: "https://github.com/cocktailpeanut/breadboard/issues"
-      }]
-      let session = this.auth(req, res)
-      res.render("help", {
-        agent: req.agent,
-        config: this.config.config,
-        theme: this.theme,
-        style: this.style,
-        items,
-        platform: process.platform,
-        machine_version: this.MACHINE_VERSION,
-        version: this.VERSION
-      })
+      }];
+      res.send(items);
     })
     app.get("/connect", (req, res) => {
       let session = this.auth(req, res)
