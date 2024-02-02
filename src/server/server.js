@@ -25,6 +25,10 @@ const APP_NAME = `Breadboard API`;
 class Breadmachine {
 
   ipc = {}
+
+  // Just to show no construction tasks are required
+  constructor() {}
+
   async init(config) {
     this.config = config
     let settings = await this.settings()
@@ -203,7 +207,7 @@ class Breadmachine {
     return session
   }
   start() {
-    let app = express()
+    const app = express()
     const httpServer = http.createServer(app);
     this.io = new Server(httpServer, {
       cors: {
@@ -213,23 +217,25 @@ class Breadmachine {
       cookie: true
     });
     this.io.on('connection', (socket) => {
+      logger.info(`>>> New socket connection`);
       try {
-        logger.info(socket.handshake.headers.cookie);
+        // For now the session ID is always the same
+        // logger.info(socket.handshake.headers.cookie);
+        logger.info(`id: ${socket.id}`);
         let parsed = cookie.parse(socket.handshake.headers.cookie || "")
-        logger.info("connect", parsed)
         let session = parsed.session
-        logger.debug(`Session ID: ${session} <== ${socket}`);
         if (this.ipc[session]) {
           logger.debug(`Assigning socket to session ${session}`);
           this.ipc[session].socket = socket
           socket.on('disconnect', () => {
-            logger.info('socket disconnect', parsed)
+            logger.warn('Socket disconnected', parsed)
             delete this.ipc[session]
           })
         }
       } catch (e) {
         logger.error("io connection error", e)
       }
+      logger.info(`<<< New socket connection`);
     });
 
     // Need this since UI and API have two different ports
@@ -273,7 +279,7 @@ class Breadmachine {
 
 
     app.get("/help", (req, res) => {
-      let items = [{
+      const items = [{
         name: "discord",
         description: "ask questions and share feedback",
         href: "https://discord.gg/XahBUrbVwz"
@@ -294,7 +300,7 @@ class Breadmachine {
       res.status(404).json({message: `Nothing here right now. Come back later.`});
     });
 
-    // TODO: Return list of favorite images
+    // TODO: Return favorite filters??? Better to store in the browser...
     app.get("/favorites", (req, res) => {
       res.status(404).json({message: `Nothing here right now. Come back later.`});
     });
