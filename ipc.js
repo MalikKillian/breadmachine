@@ -6,6 +6,8 @@ const fs = require('fs')
 const path = require('path')
 const Diffusionbee = require('./crawler/diffusionbee')
 const Standard = require('./crawler/standard')
+const filesystem = require('./components/filesystem')
+
 class IPC {
   handlers = {}
   handle(name, fn) {
@@ -161,11 +163,7 @@ class IPC {
       }
     })
     this.ipc.handle('del', async (session, filenames) => {
-      for(let filename of filenames) {
-        await fs.promises.rm(filename).catch((e) => {
-          console.log("error", e)
-        })
-      }
+      filesystem().del(filenames)
     })
     this.ipc.handle('defaults', async (session) => {
       let settings = await this.app.settings()
@@ -176,7 +174,7 @@ class IPC {
         console.log("args", JSON.stringify(rpc.args, null, 2))
         let res = await this.gm[rpc.path][rpc.cmd](...rpc.args)
         return res
-      } 
+      }
     })
     this.ipc.handle('xmp', async (session, file_path) => {
       let res = await this.gm.agent.get(file_path)

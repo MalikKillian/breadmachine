@@ -42,8 +42,8 @@ class Breadmachine {
     this.default_sync_mode = "default"
     this.current_sorter_code = 0
 
-    const home = os.homedir()
-    this.home = path.resolve(home, "__breadboard__")
+    // Set the users home directory as a constant value
+    this.home = path.resolve(os.homedir(), "__breadboard__")
 
     this.config.gm = {
       user: new GM({
@@ -92,12 +92,7 @@ class Breadmachine {
 
   }
   async parse(filename) {
-    let r
-    const folder = path.dirname(filename)
-    let diffusionbee;
-    let standard;
-    let file_path = filename
-    let root_path = folder
+    const root_path = path.dirname(filename);
     let res;
     try {
       if (/diffusionbee/g.test(root_path)) {
@@ -105,13 +100,13 @@ class Breadmachine {
           this.engines.diffusionbee = new Diffusionbee(root_path, this.config.gm)
         }
         await this.engines.diffusionbee.init()
-        res = await this.engines.diffusionbee.sync(file_path)
+        res = await this.engines.diffusionbee.sync(filename)
       } else {
         if (!this.engines.standard) {
           this.engines.standard = new Standard(root_path, this.config.gm)
         }
         await this.engines.standard.init()
-        res = await this.engines.standard.sync(file_path)
+        res = await this.engines.standard.sync(filename)
       }
       return res
     } catch (e) {
