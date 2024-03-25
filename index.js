@@ -18,6 +18,8 @@ const Diffusionbee = require('./crawler/diffusionbee')
 const Standard = require('./crawler/standard')
 const GM = require("gmgm")
 class Breadmachine {
+  // Express application
+  app;
   ipc = {}
   async init(config) {
     this.config = config
@@ -84,10 +86,7 @@ class Breadmachine {
 
     this.engines = {}
 
-
-    await this.updateCheck().catch((e) => {
-      console.log("update check error", e)
-    })
+    // TODO: reimplement update check
     this.start()
 
   }
@@ -198,7 +197,7 @@ class Breadmachine {
     return session
   }
   start() {
-    let app = express()
+    const app = express()
     const server = http.createServer(app);
     this.io = socketIO(server, {
       cookie: true
@@ -359,26 +358,6 @@ class Breadmachine {
       console.log(`Breadboard running at http://localhost:${this.port}`)
     })
     this.app = app
-  }
-  async updateCheck () {
-    if (this.config.releases) {
-      const releaseFeed = this.config.releases.feed
-      const releaseURL = this.config.releases.url
-      const updater = new Updater()
-      let res = await updater.check(releaseFeed)
-      if (res.feed && res.feed.entry) {
-        let latest = (Array.isArray(res.feed.entry) ? res.feed.entry[0] : res.feed.entry)
-        if (latest.title === this.VERSION) {
-          console.log("UP TO DATE", latest.title, this.VERSION)
-        } else {
-          console.log("Need to update to", latest.id, latest.updated, latest.title)
-          this.need_update = {
-            $url: releaseURL,
-            latest
-          }
-        }
-      }
-    }
   }
 }
 module.exports = Breadmachine
