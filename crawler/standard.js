@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { fdir } = require("fdir");
-const Parser = require('./parser')
+const Parser = require('./parser');
+
 class Standard {
   constructor(folderpath, gm) {
     this.folderpath = folderpath
@@ -24,36 +25,34 @@ class Standard {
   }
   async sync(filename, force) {
 
+    // Check if filename points to a real file
+    if (!fs.existsSync(filename)) {
+      throw new Error(`Could not locate file: ${filename}`)
+    }
+
     // 1. Try to read metadata from the image
     // 2. If the image exists, Write the parsed metadata to XMP
     // 3. Return the parsed metadata
     let agent_info = await this.gm.agent.get(filename)
-    if (agent_info) {
-      // agent_info != null => image file exists
-      // parse the image file and write to XMP
 
+    // parse the image file and write to XMP
+    // info := { xmp, parsed }
+    try {
 
-      // info := { xmp, parsed }
-      try {
-
-        // 1. Try to read metadata from the image
-        let list = await this.parser.parse(filename)
-        // 2. Write to XMP and set the new agent_info
-        agent_info = await this.gm.agent.set(
-          filename,
-          { "xmp:gm": list },
-          { store: "memory" }
-        )
-      } catch (e) {
-        console.log("ERROR sync", filename, e)
-      }
-    } else {
-      // agent_info: null => image file does not exist
-      // IGNORE
+      // 1. Try to read metadata from the image
+      let list = await this.parser.parse(filename)
+      // 2. Write to XMP and set the new agent_info
+      agent_info = await this.gm.agent.set(
+        filename,
+        { "xmp:gm": list },
+        { store: "memory" }
+      )
+    } catch (e) {
+      console.error("ERROR sync", filename, e)
     }
 
     // 2. crawl from user XMP
-    // user_info := { xmp, parsed, cid, path } 
+    // user_info := { xmp, parsed, cid, path }
     let user_info = await this.extract(filename, force)
 
     // merge agent_info and user_info
@@ -61,7 +60,6 @@ class Standard {
     let serialized = await this.parser.serialize(this.folderpath, filename, parsed)
     serialized.id = agent_info.cid
     return serialized
-
   }
 }
 module.exports = Standard
